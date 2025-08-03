@@ -246,29 +246,38 @@ const TradingModels = () => {
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
       const windowHeight = window.innerHeight;
-      const nodeIndex = Math.floor(scrollPosition / (windowHeight * 0.8));
       
-      if (nodeIndex >= 0 && nodeIndex < tradingFlow.length) {
-        setActiveNode(nodeIndex);
+      // Calculate which node should be active based on scroll position
+      // Each node takes up 100vh, so we divide by window height
+      const nodeIndex = Math.floor((scrollPosition + windowHeight / 2) / windowHeight);
+      
+      const clampedIndex = Math.max(0, Math.min(nodeIndex, tradingFlow.length - 1));
+      
+      if (clampedIndex !== activeNode) {
+        setActiveNode(clampedIndex);
+        // Reset model selection when changing nodes
+        if (clampedIndex !== 0) {
+          setSelectedModel(null);
+        }
       }
     };
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [activeNode]);
 
   const y = useTransform(scrollY, [0, 400], [0, -100]);
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <div className="bg-background relative overflow-hidden">
       {/* Background Effects */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background" />
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse-glow" />
-      <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-accent/10 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '1s' }} />
+      <div className="fixed inset-0 bg-gradient-to-br from-primary/5 via-background to-background" />
+      <div className="fixed top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse-glow" />
+      <div className="fixed bottom-1/4 right-1/4 w-64 h-64 bg-accent/10 rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: '1s' }} />
 
-      {/* Header */}
+      {/* Header - Fixed Section */}
       <motion.div 
-        className="relative z-10 text-center py-20"
+        className="relative z-10 text-center py-20 h-screen flex flex-col justify-center"
         style={{ y }}
       >
         <motion.h1 
@@ -280,13 +289,32 @@ const TradingModels = () => {
           How It Works
         </motion.h1>
         <motion.p 
-          className="text-xl text-muted-foreground max-w-2xl mx-auto"
+          className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
           Choose your path to funded trading. Each model is designed to match different trading styles and risk preferences.
         </motion.p>
+        
+        {/* Scroll Indicator */}
+        <motion.div 
+          className="absolute bottom-8 left-1/2 transform -translate-x-1/2"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.6 }}
+        >
+          <div className="flex flex-col items-center space-y-2 text-muted-foreground">
+            <span className="text-sm">Scroll to explore</span>
+            <motion.div 
+              className="w-6 h-10 border-2 border-primary/30 rounded-full flex justify-center"
+              animate={{ y: [0, 8, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              <div className="w-1 h-3 bg-primary rounded-full mt-2" />
+            </motion.div>
+          </div>
+        </motion.div>
       </motion.div>
 
       {/* Sidebar Navigation */}
@@ -302,8 +330,9 @@ const TradingModels = () => {
             onClick={() => {
               setActiveNode(index);
               setSelectedModel(null);
+              // Scroll to the specific node section
               window.scrollTo({
-                top: index * window.innerHeight * 0.8,
+                top: (index + 1) * window.innerHeight,
                 behavior: 'smooth'
               });
             }}
@@ -321,25 +350,35 @@ const TradingModels = () => {
         ))}
       </div>
 
-      {/* Main Content Area */}
-      <div className="relative z-10 pb-20">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeNode}
-            className="container mx-auto px-8"
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
-            transition={{ duration: 0.6 }}
-          >
-            <TradingNodeFlow 
-              node={tradingFlow[activeNode]} 
-              selectedModel={selectedModel}
-              onModelSelect={setSelectedModel}
-            />
-          </motion.div>
-        </AnimatePresence>
-      </div>
+      {/* Trading Flow Sections */}
+      {tradingFlow.map((node, index) => (
+        <motion.section
+          key={node.id}
+          className="min-h-screen relative z-10 flex items-center py-20"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: activeNode === index ? 1 : 0.3 }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className="container mx-auto px-8 w-full">
+            <AnimatePresence mode="wait">
+              {activeNode === index && (
+                <motion.div
+                  initial={{ opacity: 0, y: 50 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -50 }}
+                  transition={{ duration: 0.6 }}
+                >
+                  <TradingNodeFlow 
+                    node={node} 
+                    selectedModel={selectedModel}
+                    onModelSelect={setSelectedModel}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.section>
+      ))}
     </div>
   );
 };
